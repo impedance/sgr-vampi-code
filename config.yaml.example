@@ -1,0 +1,58 @@
+# SGR Research Agent - Configuration Template
+# Production-ready configuration for Schema-Guided Reasoning
+# Copy this file to config.yaml and fill in your API keys
+
+# OpenAI API Configuration
+openai:
+  api_key: "your-openai-api-key-here"  # Required: Your OpenAI API key
+  base_url: ""                         # Optional: Alternative URL (e.g., for proxy LiteLLM/vLLM)
+  model: "gpt-4o-mini"                 # Model to use
+  max_tokens: 8000                     # Maximum number of tokens
+  temperature: 0.4                     # Generation temperature (0.0-1.0)
+  proxy: ""                            # Example: "socks5://127.0.0.1:1081" or "http://127.0.0.1:8080" or leave empty for no proxy
+
+# Tavily Search Configuration
+tavily:
+  api_key: "your-tavily-api-key-here"  # Required: Your Tavily API key
+  api_base_url: "https://api.tavily.com"  # Tavily API base URL
+
+# Search Settings
+search:
+  max_results: 10                      # Maximum number of search results
+
+# Scraping Settings
+scraping:
+  enabled: false                       # Enable full text scraping of found pages
+  max_pages: 5                         # Maximum pages to scrape per search
+  content_limit: 1500                  # Character limit for full content per source
+
+# Execution Settings
+execution:
+  max_steps: 6                         # Maximum number of execution steps
+  reports_dir: "reports"               # Directory for saving reports
+  logs_dir: "logs"                     # Directory for saving reports
+
+# Prompts Settings
+prompts:
+  prompts_dir: "prompts"               # Directory with prompts
+  system_prompt_file: "system_prompt.txt"  # System prompt file
+
+# Logging Settings
+logging:
+  config_file: "logging_config.yaml"  # Logging configuration file path
+
+mcp:
+
+  # Limit on the result of MCP tool invocation.
+  # A balanced constant value: not too large to avoid filling the entire context window with potentially unimportant data,
+  # yet not too small to ensure critical information from a single MCP fits through
+  context_limit: 15000
+
+  # https://gofastmcp.com/clients/transports#mcp-json-configuration-transport
+  transport_config:
+    mcpServers:
+      deepwiki:
+        url: "https://mcp.deepwiki.com/mcp"
+
+      context7:
+        url: "https://mcp.context7.com/mcp"

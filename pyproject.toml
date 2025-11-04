@@ -1,0 +1,98 @@
+[build-system]
+requires = ["setuptools>=64.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sgr-deep-research"
+dynamic = ["version"]
+description = "SGR Deep Research - Schema-Guided Reasoning for Deep Research"
+readme = "README.md"
+authors = [
+    {name = "virrius"},
+    {name = "VaKovaLskii"},
+    {name = "abdullin"},
+    {name = "Pavel Zloi"},
+    {name = "Shadekss"},
+    {name = "mixaill76"}
+]
+requires-python = ">=3.10"
+license = {text = "MIT"}
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+keywords = ["ai", "research", "reasoning", "schema-guided", "openai"]
+
+dependencies = [
+    # Core dependencies - основные зависимости для работы системы
+    "openai>=1.0.0",
+    "pydantic>=2.0.0",
+    "rich>=13.0.0",
+    # HTTP client with proxy support - HTTP клиент с поддержкой прокси
+    "httpx>=0.25.0",
+    "socksio>=1.0.0",
+    # Search and research - поиск и исследования
+    "tavily-python>=0.3.0",
+    # Web scraping and content extraction - веб-скрапинг и извлечение контента
+    "trafilatura>=1.6.0",
+    "youtube-transcript-api>=0.6.0",
+    # Configuration and utilities - конфигурация и утилиты
+    "PyYAML>=6.0",
+    "envyaml>=1.10.0",
+    "python-dateutil>=2.8.0",
+    "pydantic-settings>=2.10.1",
+    "fastapi>=0.116.1",
+    "uvicorn>=0.35.0",
+    "lxml<6",
+    "bs4>=0.0.2",
+    "pandas>=2.3.3",
+    "openpyxl>=3.1.5",
+    "fastmcp>=2.12.4",
+    "jambo>=0.1.3.post2",
+]
+
+[project.urls]
+Homepage = "https://github.com/vakovalskii/sgr-deep-research"
+Repository = "https://github.com/vakovalskii/sgr-deep-research"
+Issues = "https://github.com/vakovalskii/sgr-deep-research/issues"
+
+[project.scripts]
+sgr = "sgr_deep_research.__main__:main"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "isort>=5.12.0",
+    "flake8>=6.0.0",
+    "mypy>=1.0.0",
+]
+tests = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["sgr_deep_research*"]
+
+[tool.setuptools]
+zip-safe = false
+
+[tool.setuptools.dynamic]
+version = {attr = "sgr_deep_research.__version__"}
+
+[tool.setuptools.package-dir]
+"" = "."
+
+[tool.setuptools.package-data]
+"sgr_deep_research" = ["**/*.yaml", "**/*.yml", "**/*.json", "**/*.txt"]
