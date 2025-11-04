@@ -1,5 +1,9 @@
 # 🦇 SGR Vampi Code - AI Coding Assistant with Schema-Guided Reasoning
 
+
+https://github.com/user-attachments/assets/8afd8caa-f084-4606-8ae0-b95f367a3c92
+
+
 ## SGR Vampi Code is an intelligent coding assistant powered by Schema-Guided Reasoning (SGR). It can run with small LLMs for fully local development assistance.
 
 This project is developed by the **neuraldeep** community. It is inspired by the Schema-Guided Reasoning (SGR) work and [SGR Agent Demo](https://abdullin.com/schema-guided-reasoning/demo) delivered by "LLM Under the Hood" community and AI R&D Hub of [TIMETOACT GROUP Österreich](https://www.timetoact-group.at)
