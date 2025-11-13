@@ -40,6 +40,7 @@ class SGRVampiCodeAgent(SGRResearchAgent):
         max_iterations: int = 20,
         max_conversation_messages: int = 80,
         tracking_token: str | None = None,
+        working_directory: str = ".",
     ):
         super().__init__(
             task=task,
@@ -48,6 +49,7 @@ class SGRVampiCodeAgent(SGRResearchAgent):
             max_iterations=max_iterations,
             max_searches=0,  # No web searches for coding agent
             tracking_token=tracking_token,
+            working_directory=working_directory,
         )
         self.toolkit = [
             *system_agent_tools,

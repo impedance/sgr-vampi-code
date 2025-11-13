@@ -61,6 +61,8 @@ class ResearchContext(BaseModel):
     clarification_received: asyncio.Event = Field(
         default_factory=asyncio.Event, description="Event for clarification synchronization"
     )
+    
+    working_directory: str = Field(default=".", description="Working directory for file operations")
 
     # ToDO: rename, my creativity finished now
     def agent_state(self) -> dict:

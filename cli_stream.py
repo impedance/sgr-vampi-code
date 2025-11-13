@@ -498,7 +498,7 @@ def chat(
         try:
             # Create new agent for each message
             # Each agent instance is independent and completes its task
-            agent = SGRVampiCodeAgent(task=user_input)
+            agent = SGRVampiCodeAgent(task=user_input, working_directory=workspace_path)
             handler = LocalAgentStreamHandler(typing_speed=typing_speed, debug=debug)
             content, clarifications, agent_name = asyncio.run(handler.stream_agent(agent))
             
@@ -539,11 +539,13 @@ def task(
     """
     Execute a single task with streaming JSON output using local agent.
     """
+    workspace_path = os.path.abspath(workspace)
     console.print(f"[bold cyan]Task:[/bold cyan] {prompt}\n")
+    console.print(f"[dim]Workspace: {workspace_path}[/dim]\n")
     console.print("[bold green]═══ Agent Response ═══[/bold green]\n")
     
     try:
-        agent = SGRVampiCodeAgent(task=prompt)
+        agent = SGRVampiCodeAgent(task=prompt, working_directory=workspace_path)
         handler = LocalAgentStreamHandler(typing_speed=typing_speed, debug=debug)
         content, clarifications, _ = asyncio.run(handler.stream_agent(agent))
         
@@ -570,11 +572,13 @@ def fast(
     """
     Execute task with instant output (no typing effect) using local agent.
     """
+    workspace_path = os.path.abspath(workspace)
     console.print(f"[bold cyan]Task:[/bold cyan] {prompt}\n")
+    console.print(f"[dim]Workspace: {workspace_path}[/dim]\n")
     console.print("[bold green]═══ Agent Response ═══[/bold green]\n")
     
     try:
-        agent = SGRVampiCodeAgent(task=prompt)
+        agent = SGRVampiCodeAgent(task=prompt, working_directory=workspace_path)
         handler = LocalAgentStreamHandler(typing_speed=0, debug=debug)
         content, clarifications, _ = asyncio.run(handler.stream_agent(agent))
         

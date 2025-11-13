@@ -313,11 +313,16 @@ class RealtimeStreamHandler:
 
 
 @app.command()
-def chat(debug: bool = typer.Option(False, "--debug", "-d", help="Enable debug logging")):
+def chat(
+    debug: bool = typer.Option(False, "--debug", "-d", help="Enable debug logging"),
+    workspace: str = typer.Option(".", "--workspace", "-w", help="Workspace path for the agent")
+):
     """
     Start interactive chat with the coding agent.
     """
     print_banner()
+    workspace_path = os.path.abspath(workspace)
+    console.print(f"[dim]Workspace: {workspace_path}[/dim]\n")
     
     # State
     current_model = "sgr_tool_calling_agent"
@@ -393,12 +398,15 @@ def chat(debug: bool = typer.Option(False, "--debug", "-d", help="Enable debug l
 @app.command()
 def task(
     prompt: str = typer.Argument(..., help="Task to execute"),
-    debug: bool = typer.Option(False, "--debug", "-d", help="Enable debug logging")
+    debug: bool = typer.Option(False, "--debug", "-d", help="Enable debug logging"),
+    workspace: str = typer.Option(".", "--workspace", "-w", help="Workspace path for the agent")
 ):
     """
     Execute a single task and exit.
     """
+    workspace_path = os.path.abspath(workspace)
     console.print(f"[bold cyan]Task:[/bold cyan] {prompt}\n")
+    console.print(f"[dim]Workspace: {workspace_path}[/dim]\n")
     console.print("[bold green]Agent:[/bold green]\n")
     
     try:

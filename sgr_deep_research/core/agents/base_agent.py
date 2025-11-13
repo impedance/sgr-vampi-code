@@ -36,6 +36,7 @@ class BaseAgent:
         max_iterations: int = 20,
         max_clarifications: int = 3,
         tracking_token: str | None = None,
+        working_directory: str = ".",
     ):
         self.id = f"{self.name}_{uuid.uuid4()}"
         self.logger = logging.getLogger(f"sgr_deep_research.agents.{self.id}")
@@ -43,7 +44,7 @@ class BaseAgent:
         self.toolkit = [*system_agent_tools, *(toolkit or [])]
         self.tracking_token = tracking_token
 
-        self._context = ResearchContext()
+        self._context = ResearchContext(working_directory=working_directory)
         self.conversation = []
         self.log = []
         self.max_iterations = max_iterations

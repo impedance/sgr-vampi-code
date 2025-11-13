@@ -31,6 +31,7 @@ class SGRResearchAgent(BaseAgent):
         max_iterations: int = 10,
         max_searches: int = 4,
         tracking_token: str | None = None,
+        working_directory: str = ".",
     ):
         super().__init__(
             task=task,
@@ -38,6 +39,7 @@ class SGRResearchAgent(BaseAgent):
             max_clarifications=max_clarifications,
             max_iterations=max_iterations,
             tracking_token=tracking_token,
+            working_directory=working_directory,
         )
 
         self.toolkit = [

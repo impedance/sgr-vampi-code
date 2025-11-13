@@ -29,7 +29,12 @@ class ReadFileTool(BaseTool):
 
     async def __call__(self, context: "ResearchContext") -> str:
         try:
-            path = Path(self.file_path).expanduser().resolve()
+            # Resolve path relative to working directory
+            if not Path(self.file_path).is_absolute():
+                base_path = Path(context.working_directory).expanduser().resolve()
+                path = (base_path / self.file_path).resolve()
+            else:
+                path = Path(self.file_path).expanduser().resolve()
             
             if not path.exists():
                 return f"Error: File not found: {self.file_path}"
@@ -69,7 +74,12 @@ class WriteFileTool(BaseTool):
 
     async def __call__(self, context: "ResearchContext") -> str:
         try:
-            path = Path(self.file_path).expanduser().resolve()
+            # Resolve path relative to working directory
+            if not Path(self.file_path).is_absolute():
+                base_path = Path(context.working_directory).expanduser().resolve()
+                path = (base_path / self.file_path).resolve()
+            else:
+                path = Path(self.file_path).expanduser().resolve()
             
             if self.create_dirs:
                 path.parent.mkdir(parents=True, exist_ok=True)
@@ -97,7 +107,12 @@ class EditFileTool(BaseTool):
 
     async def __call__(self, context: "ResearchContext") -> str:
         try:
-            path = Path(self.file_path).expanduser().resolve()
+            # Resolve path relative to working directory
+            if not Path(self.file_path).is_absolute():
+                base_path = Path(context.working_directory).expanduser().resolve()
+                path = (base_path / self.file_path).resolve()
+            else:
+                path = Path(self.file_path).expanduser().resolve()
             
             if not path.exists():
                 return f"Error: File not found: {self.file_path}"
@@ -139,6 +154,12 @@ class GrepTool(BaseTool):
 
     async def __call__(self, context: "ResearchContext") -> str:
         try:
+            # Resolve search path relative to working directory
+            search_path = self.path
+            if not Path(search_path).is_absolute():
+                base_path = Path(context.working_directory).expanduser().resolve()
+                search_path = str((base_path / search_path).resolve())
+            
             cmd = ["grep", "-r", "-n"]
             
             if self.case_insensitive:
@@ -151,7 +172,7 @@ class GrepTool(BaseTool):
                 cmd.extend(["--include", self.file_pattern])
             
             cmd.append(self.pattern)
-            cmd.append(self.path)
+            cmd.append(search_path)
             
             process = await asyncio.create_subprocess_exec(
                 *cmd,
@@ -196,11 +217,17 @@ class RunCommandTool(BaseTool):
 
     async def __call__(self, context: "ResearchContext") -> str:
         try:
+            # Resolve working directory relative to context working directory
+            work_dir = self.working_dir
+            if not Path(work_dir).is_absolute():
+                base_path = Path(context.working_directory).expanduser().resolve()
+                work_dir = str((base_path / work_dir).resolve())
+            
             process = await asyncio.create_subprocess_shell(
                 self.command,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
-                cwd=self.working_dir,
+                cwd=work_dir,
             )
             
             try:
@@ -262,7 +289,12 @@ class ListDirectoryTool(BaseTool):
 
     async def __call__(self, context: "ResearchContext") -> str:
         try:
-            path = Path(self.path).expanduser().resolve()
+            # Resolve path relative to working directory
+            if not Path(self.path).is_absolute():
+                base_path = Path(context.working_directory).expanduser().resolve()
+                path = (base_path / self.path).resolve()
+            else:
+                path = Path(self.path).expanduser().resolve()
             
             if not path.exists():
                 return f"Error: Directory not found: {self.path}"
@@ -353,7 +385,13 @@ class FindFilesTool(BaseTool):
 
     async def __call__(self, context: "ResearchContext") -> str:
         try:
-            cmd = ["find", self.path, "-type", "f", "-name", self.pattern]
+            # Resolve search path relative to working directory
+            search_path = self.path
+            if not Path(search_path).is_absolute():
+                base_path = Path(context.working_directory).expanduser().resolve()
+                search_path = str((base_path / search_path).resolve())
+            
+            cmd = ["find", search_path, "-type", "f", "-name", self.pattern]
             
             process = await asyncio.create_subprocess_exec(
                 *cmd,
