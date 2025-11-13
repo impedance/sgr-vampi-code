@@ -16,7 +16,6 @@ from sgr_deep_research.core.stream import OpenAIStreamingGenerator
 from sgr_deep_research.core.tools import (
     # Base
     BaseTool,
-    ClarificationTool,
     ReasoningTool,
     system_agent_tools,
 )
@@ -36,11 +35,13 @@ class BaseAgent:
         toolkit: list[Type[BaseTool]] | None = None,
         max_iterations: int = 20,
         max_clarifications: int = 3,
+        tracking_token: str | None = None,
     ):
         self.id = f"{self.name}_{uuid.uuid4()}"
         self.logger = logging.getLogger(f"sgr_deep_research.agents.{self.id}")
         self.task = task
         self.toolkit = [*system_agent_tools, *(toolkit or [])]
+        self.tracking_token = tracking_token
 
         self._context = ResearchContext()
         self.conversation = []
@@ -54,6 +55,14 @@ class BaseAgent:
 
         self.openai_client = AsyncOpenAI(**client_kwargs)
         self.streaming_generator = OpenAIStreamingGenerator(model=self.id)
+
+    def _get_extra_body(self) -> dict:
+        """Get extra body parameters for OpenAI requests (e.g., tracking token).
+        
+        By default, uses agent.id as tracking token for request tracing.
+        """
+        tracking_id = self.tracking_token or self.id
+        return {"litellm_session_id": tracking_id}
 
     async def provide_clarification(self, clarifications: str):
         """Receive clarification from external source (e.g. user input)"""
@@ -174,13 +183,6 @@ class BaseAgent:
                 self._context.current_step_reasoning = reasoning
                 action_tool = await self._select_action_phase(reasoning)
                 await self._action_phase(action_tool)
-
-                if isinstance(action_tool, ClarificationTool):
-                    self.logger.info("\n⏸️  Research paused - please answer questions")
-                    self._context.state = AgentStatesEnum.WAITING_FOR_CLARIFICATION
-                    self._context.clarification_received.clear()
-                    await self._context.clarification_received.wait()
-                    continue
 
         except Exception as e:
             self.logger.error(f"❌ Agent execution error: {str(e)}")

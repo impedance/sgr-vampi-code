@@ -386,6 +386,9 @@ class FindFilesTool(BaseTool):
             return f"Error finding files: {str(e)}"
 
 
+# Import web search tools for internet search capability
+from sgr_deep_research.core.tools.research import WebSearchTool, ExtractPageContentTool
+
 # Coding agent tools collection
 coding_agent_tools = [
     ReadFileTool,
@@ -395,5 +398,7 @@ coding_agent_tools = [
     RunCommandTool,
     ListDirectoryTool,
     FindFilesTool,
+    WebSearchTool,
+    ExtractPageContentTool,
 ]
 

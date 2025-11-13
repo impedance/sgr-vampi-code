@@ -3,7 +3,6 @@ from typing import Type
 from sgr_deep_research.core.agents.base_agent import BaseAgent
 from sgr_deep_research.core.tools import (
     BaseTool,
-    ClarificationTool,
     CreateReportTool,
     FinalAnswerTool,
     NextStepToolsBuilder,
@@ -31,12 +30,14 @@ class SGRResearchAgent(BaseAgent):
         max_clarifications: int = 3,
         max_iterations: int = 10,
         max_searches: int = 4,
+        tracking_token: str | None = None,
     ):
         super().__init__(
             task=task,
             toolkit=toolkit,
             max_clarifications=max_clarifications,
             max_iterations=max_iterations,
+            tracking_token=tracking_token,
         )
 
         self.toolkit = [
@@ -56,10 +57,6 @@ class SGRResearchAgent(BaseAgent):
                 CreateReportTool,
                 FinalAnswerTool,
             }
-        if self._context.clarifications_used >= self.max_clarifications:
-            tools -= {
-                ClarificationTool,
-            }
         if self._context.searches_used >= self.max_searches:
             tools -= {
                 WebSearchTool,
@@ -67,13 +64,16 @@ class SGRResearchAgent(BaseAgent):
         return NextStepToolsBuilder.build_NextStepTools(list(tools))
 
     async def _reasoning_phase(self) -> NextStepToolStub:
-        async with self.openai_client.chat.completions.stream(
-            model=config.openai.model,
-            response_format=await self._prepare_tools(),
-            messages=await self._prepare_context(),
-            max_tokens=config.openai.max_tokens,
-            temperature=config.openai.temperature,
-        ) as stream:
+        request_kwargs = {
+            "model": config.openai.model,
+            "response_format": await self._prepare_tools(),
+            "messages": await self._prepare_context(),
+            "max_tokens": config.openai.max_tokens,
+            "temperature": config.openai.temperature,
+            "extra_body": self._get_extra_body(),
+        }
+        
+        async with self.openai_client.chat.completions.stream(**request_kwargs) as stream:
             async for event in stream:
                 if event.type == "chunk":
                     self.streaming_generator.add_chunk(event)

@@ -6,11 +6,8 @@ from typing import Any, Dict, List, Literal
 from pydantic import BaseModel, Field
 
 from sgr_deep_research.core.agents import (
-    SGRAutoToolCallingResearchAgent,
     SGRResearchAgent,
-    SGRSOToolCallingResearchAgent,
-    SGRToolCallingResearchAgent,
-    ToolCallingResearchAgent,
+    SGRVampiCodeAgent,
 )
 
 
@@ -18,19 +15,13 @@ class AgentModel(str, Enum):
     """Available agent models for chat completion."""
 
     SGR_AGENT = SGRResearchAgent.name
-    SGR_TOOLS_AGENT = SGRToolCallingResearchAgent.name
-    SGR_AUTO_TOOLS_AGENT = SGRAutoToolCallingResearchAgent.name
-    SGR_SO_TOOLS_AGENT = SGRSOToolCallingResearchAgent.name
-    TOOLS_AGENT = ToolCallingResearchAgent.name
+    SGR_VAMPI_CODE_AGENT = SGRVampiCodeAgent.name
 
 
 # Mapping of agent types to their classes
 AGENT_MODEL_MAPPING = {
     AgentModel.SGR_AGENT: SGRResearchAgent,
-    AgentModel.SGR_TOOLS_AGENT: SGRToolCallingResearchAgent,
-    AgentModel.SGR_AUTO_TOOLS_AGENT: SGRAutoToolCallingResearchAgent,
-    AgentModel.SGR_SO_TOOLS_AGENT: SGRSOToolCallingResearchAgent,
-    AgentModel.TOOLS_AGENT: ToolCallingResearchAgent,
+    AgentModel.SGR_VAMPI_CODE_AGENT: SGRVampiCodeAgent,
 }
 
 
@@ -53,6 +44,7 @@ class ChatCompletionRequest(BaseModel):
     stream: bool = Field(default=True, description="Enable streaming mode")
     max_tokens: int | None = Field(default=1500, description="Maximum number of tokens")
     temperature: float | None = Field(default=0, description="Generation temperature")
+    tracking_token: str | None = Field(default=None, description="Optional tracking token for request tracing (e.g., litellm_session_id)")
 
 
 class ChatCompletionChoice(BaseModel):

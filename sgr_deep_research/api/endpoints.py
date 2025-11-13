@@ -135,9 +135,12 @@ async def create_chat_completion(request: ChatCompletionRequest):
             )
 
         agent_class = AGENT_MODEL_MAPPING[agent_model]
-        agent = agent_class(task=task)
+        agent = agent_class(task=task, tracking_token=request.tracking_token)
         agents_storage[agent.id] = agent
-        logger.info(f"Agent {agent.id} ({agent_model.value}) created and stored for task: {task[:100]}...")
+        logger.info(
+            f"Agent {agent.id} ({agent_model.value}) created and stored for task: {task[:100]}... "
+            f"(tracking_token: {request.tracking_token})"
+        )
 
         _ = asyncio.create_task(agent.execute())
         return StreamingResponse(

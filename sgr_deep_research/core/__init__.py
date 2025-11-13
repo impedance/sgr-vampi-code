@@ -2,11 +2,8 @@
 
 from sgr_deep_research.core.agents import (  # noqa: F403
     BaseAgent,
-    SGRAutoToolCallingResearchAgent,
     SGRResearchAgent,
-    SGRSOToolCallingResearchAgent,
-    SGRToolCallingResearchAgent,
-    ToolCallingResearchAgent,
+    SGRVampiCodeAgent,
 )
 from sgr_deep_research.core.models import AgentStatesEnum, ResearchContext, SearchResult, SourceData
 from sgr_deep_research.core.prompts import PromptLoader
@@ -17,10 +14,7 @@ __all__ = [
     # Agents
     "BaseAgent",
     "SGRResearchAgent",
-    "SGRToolCallingResearchAgent",
-    "SGRAutoToolCallingResearchAgent",
-    "ToolCallingResearchAgent",
-    "SGRSOToolCallingResearchAgent",
+    "SGRVampiCodeAgent",
     # Models
     "AgentStatesEnum",
     "ResearchContext",

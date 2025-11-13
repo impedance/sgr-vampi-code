@@ -54,85 +54,43 @@ class MCPBaseTool(BaseTool):
             return f"Error: {e}"
 
 
-class ClarificationTool(BaseTool):
-    """Ask clarifying questions when facing ambiguous request.
-
-    Keep all fields concise - brief reasoning, short terms, and clear questions.
-    """
-
-    reasoning: str = Field(description="Why clarification is needed (1-2 sentences MAX)", max_length=200)
-    unclear_terms: list[str] = Field(
-        description="List of unclear terms (brief, 1-3 words each)",
-        min_length=1,
-        max_length=3,
-    )
-    assumptions: list[str] = Field(
-        description="Possible interpretations (short, 1 sentence each)",
-        min_length=2,
-        max_length=3,
-    )
-    questions: list[str] = Field(
-        description="3 specific clarifying questions (short and direct)",
-        min_length=3,
-        max_length=3,
-    )
-
-    async def __call__(self, context: ResearchContext) -> str:
-        return "\n".join(self.questions)
-
-
-class GeneratePlanTool(BaseTool):
-    """Generate research plan.
-
-    Useful to split complex request into manageable steps.
-    """
-
-    reasoning: str = Field(description="Justification for research approach")
-    research_goal: str = Field(description="Primary research objective")
-    planned_steps: list[str] = Field(description="List of 3-4 planned steps", min_length=3, max_length=4)
-    search_strategies: list[str] = Field(description="Information search strategies", min_length=2, max_length=3)
-
-    async def __call__(self, context: ResearchContext) -> str:
-        return self.model_dump_json(
-            indent=2,
-            exclude={
-                "reasoning",
-            },
-        )
-
-
-class AdaptPlanTool(BaseTool):
-    """Adapt research plan based on new findings."""
-
-    reasoning: str = Field(description="Why plan needs adaptation based on new data")
-    original_goal: str = Field(description="Original research goal")
-    new_goal: str = Field(description="Updated research goal")
-    plan_changes: list[str] = Field(description="Specific changes made to plan", min_length=1, max_length=3)
-    next_steps: list[str] = Field(description="Updated remaining steps", min_length=2, max_length=4)
-
-    async def __call__(self, context: ResearchContext) -> str:
-        return self.model_dump_json(
-            indent=2,
-            exclude={
-                "reasoning",
-            },
-        )
-
-
 class FinalAnswerTool(BaseTool):
-    """Finalize research task and complete agent execution after all steps are
-    completed.
+    """Finalize task and complete agent execution after all steps are completed.
 
-    Usage: Call after you complete research task
+    Usage: Call after you complete the task (coding, analysis, research, etc.)
     
     IMPORTANT: Format the 'answer' field using Markdown for beautiful rendering:
-    - Use headers (# ## ###) for structure
-    - Use **bold** and *italic* for emphasis
-    - Use code blocks with ```language for code snippets
-    - Use lists (- or 1.) for enumeration
-    - Use tables for structured data
-    - Use > for quotes
-    - Use links [text](url) when referencing sources
+    - Use headers (# ## ###) for structure and sections
+    - Use **bold** and *italic* for emphasis on key points
+    - Use code blocks with ```language for code snippets and file paths
+    - Use lists (- or 1.) for enumeration and steps
+    - Use tables for structured data (metrics, comparisons, statistics)
+    - Use > for quotes and important notes
+    - Use links [text](url) when referencing sources or documentation
+    
+    For Repository Analysis specifically:
+    - **CRITICAL**: Include directory tree structure (from `tree` command) in a code block
+    - Include clear sections: Structure, Architecture, Dependencies, Code Quality, etc.
+    - Use tables for metrics (files count, lines of code, test coverage)
+    - Include code examples in code blocks to illustrate patterns
+    - Provide actionable recommendations with priorities
+    - Reference specific files and directories with proper formatting
+    
+    Example structure for repository analysis:
+    ```markdown
+    # Repository Analysis
+    
+    ## Directory Structure
+    ```
+    [tree command output here]
+    ```
+    
+    ## Statistics
+    | Metric | Value |
+    |--------|-------|
+    | Total Files | 123 |
+    | Python Files | 45 |
+    ```
     """
 
     reasoning: str = Field(description="Why task is now complete and how answer was verified")
@@ -140,11 +98,15 @@ class FinalAnswerTool(BaseTool):
         description="Summary of completed steps including verification", min_length=1, max_length=5
     )
     answer: str = Field(
-        description="Comprehensive final answer with EXACT factual details (dates, numbers, names). "
+        description="Comprehensive final answer with EXACT factual details (dates, numbers, names, file paths). "
         "MUST be formatted in Markdown with proper structure: headers, bold/italic text, code blocks, "
-        "lists, tables where appropriate. Use visual formatting to make the answer clear and readable."
+        "lists, tables where appropriate. Use visual formatting to make the answer clear and readable. "
+        "For repository analysis: MUST include directory tree structure in code block, sections for structure, "
+        "architecture, dependencies, code quality, metrics in tables, code examples, and actionable recommendations."
     )
-    status: Literal[AgentStatesEnum.COMPLETED, AgentStatesEnum.FAILED] = Field(description="Task completion status")
+    status: Literal[AgentStatesEnum.COMPLETED, AgentStatesEnum.FAILED, AgentStatesEnum.ERROR] = Field(
+        description="Task completion status"
+    )
 
     async def __call__(self, context: ResearchContext) -> str:
         context.state = self.status
@@ -252,9 +214,6 @@ class NextStepToolsBuilder:
 
 
 system_agent_tools = [
-    ClarificationTool,
-    GeneratePlanTool,
-    AdaptPlanTool,
     FinalAnswerTool,
     ReasoningTool,
 ]
