@@ -24,10 +24,13 @@ Key features:
 """
 
 import asyncio
+import datetime
 import json
 import os
 import sys
 import time
+import traceback
+from pathlib import Path
 from typing import Any, Dict
 
 import typer
@@ -47,6 +50,21 @@ from sgr_deep_research.settings import get_config
 app = typer.Typer()
 console = Console()
 config = get_config()
+
+
+def log_cli_error(message: str, exc: Exception | None = None):
+    """Append CLI errors to a dedicated log file without spamming console."""
+    logs_dir = Path(config.execution.logs_dir)
+    logs_dir.mkdir(parents=True, exist_ok=True)
+    log_path = logs_dir / "cli_stream_errors.log"
+    lines = [f"{datetime.datetime.now().isoformat()} - {message}"]
+    if exc is not None:
+        lines.append(f"{type(exc).__name__}: {exc}")
+        tb = traceback.format_exc()
+        if tb.strip():
+            lines.append(tb)
+    with log_path.open("a", encoding="utf-8") as f:
+        f.write("\n".join(lines) + "\n")
 
 
 def print_banner():
@@ -270,7 +288,6 @@ class LocalAgentStreamHandler:
         
         # Debug setup
         if self.debug:
-            import datetime
             filename = f"debug_stream_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
             self.debug_file = open(filename, "w", encoding="utf-8")
             console.print(f"[dim]📝 Debug: {filename}[/dim]\n")
@@ -391,29 +408,17 @@ class LocalAgentStreamHandler:
                         sys.stdout.flush()
         
         except Exception as e:
-            console.print(f"\n[red]Streaming error: {e}[/red]")
-            console.print(f"[yellow]Error type: {type(e).__name__}[/yellow]")
-            if hasattr(e, 'response'):
-                console.print(f"[yellow]Response: {e.response}[/yellow]")
-            if hasattr(e, 'body'):
-                console.print(f"[yellow]Body: {e.body}[/yellow]")
-            import traceback
-            console.print(f"[dim]{traceback.format_exc()}[/dim]")
+            console.print(f"\n[red]Ошибка стриминга: {e}[/red]")
+            console.print("[yellow]Подробности в logs/cli_stream_errors.log[/yellow]")
+            log_cli_error("Streaming error", e)
         
         # Wait for agent to complete
         try:
             await agent_task
         except Exception as e:
-            console.print(f"\n[red]Agent execution error: {e}[/red]")
-            console.print(f"[yellow]Error type: {type(e).__name__}[/yellow]")
-            if hasattr(e, 'response'):
-                console.print(f"[yellow]Response: {e.response}[/yellow]")
-            if hasattr(e, 'body'):
-                console.print(f"[yellow]Body: {e.body}[/yellow]")
-            if hasattr(e, 'message'):
-                console.print(f"[yellow]Message: {e.message}[/yellow]")
-            import traceback
-            console.print(f"[dim]{traceback.format_exc()}[/dim]")
+            console.print(f"\n[red]Ошибка выполнения агента: {e}[/red]")
+            console.print("[yellow]Подробности в logs/cli_stream_errors.log[/yellow]")
+            log_cli_error("Agent execution error", e)
         
         # Debug close
         if self.debug and self.debug_file:
@@ -516,17 +521,9 @@ def chat(
                     content, clarifications, agent_name = asyncio.run(handler.stream_agent(agent))
         
         except Exception as e:
-            console.print(f"\n[red]Error: {e}[/red]")
-            console.print(f"[yellow]Error type: {type(e).__name__}[/yellow]")
-            if hasattr(e, 'response'):
-                console.print(f"[yellow]Response: {e.response}[/yellow]")
-            if hasattr(e, 'body'):
-                console.print(f"[yellow]Body: {e.body}[/yellow]")
-            if hasattr(e, 'status_code'):
-                console.print(f"[yellow]Status code: {e.status_code}[/yellow]")
-            if debug:
-                import traceback
-                console.print(f"[dim]{traceback.format_exc()}[/dim]")
+            console.print(f"\n[red]Ошибка: {e}[/red]")
+            console.print("[yellow]Подробности в logs/cli_stream_errors.log[/yellow]")
+            log_cli_error("Chat mode error", e)
 
 
 @app.command()
@@ -556,10 +553,9 @@ def task(
             console.print("\n[dim]Use 'chat' mode to continue.[/dim]")
     
     except Exception as e:
-        console.print(f"[red]Error: {e}[/red]")
-        if debug:
-            import traceback
-            console.print(f"[dim]{traceback.format_exc()}[/dim]")
+        console.print(f"[red]Ошибка: {e}[/red]")
+        console.print("[yellow]Подробности в logs/cli_stream_errors.log[/yellow]")
+        log_cli_error("Task mode error", e)
         raise typer.Exit(1)
 
 
@@ -588,13 +584,11 @@ def fast(
                 console.print(f"  {i}. {q}")
     
     except Exception as e:
-        console.print(f"[red]Error: {e}[/red]")
-        if debug:
-            import traceback
-            console.print(f"[dim]{traceback.format_exc()}[/dim]")
+        console.print(f"[red]Ошибка: {e}[/red]")
+        console.print("[yellow]Подробности в logs/cli_stream_errors.log[/yellow]")
+        log_cli_error("Fast mode error", e)
         raise typer.Exit(1)
 
 
 if __name__ == "__main__":
     app()
-

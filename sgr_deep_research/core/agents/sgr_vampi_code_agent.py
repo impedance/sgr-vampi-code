@@ -60,6 +60,15 @@ class SGRVampiCodeAgent(SGRResearchAgent):
         self.max_conversation_messages = max_conversation_messages
         self.continuous_mode = False  # Flag to track if this is continuing a conversation
 
+    def _final_from_error(self, message: str) -> FinalAnswerTool:
+        """Build FinalAnswerTool with error status for graceful fallback."""
+        return FinalAnswerTool(
+            reasoning=f"Tool generation failed: {message}",
+            completed_steps=["Encountered tool generation error"],
+            answer=f"Error during tool generation: {message}",
+            status=AgentStatesEnum.ERROR,
+        )
+
     def _truncate_conversation(self):
         """Truncate conversation to keep last N messages while preserving system prompt.
         
@@ -209,6 +218,7 @@ class SGRVampiCodeAgent(SGRResearchAgent):
 
     async def _select_action_phase(self, reasoning: ReasoningTool) -> BaseTool:
         """Select and execute action tool."""
+        tool_calls_missing = False
         try:
             request_kwargs = {
                 "model": config.openai.model,
@@ -227,50 +237,46 @@ class SGRVampiCodeAgent(SGRResearchAgent):
 
             completion = await stream.get_final_completion()
 
-            try:
-                tool = completion.choices[0].message.tool_calls[0].function.parsed_arguments
-            except (IndexError, AttributeError, TypeError):
-                # LLM returned a text response instead of a tool call - treat as completion
-                final_content = completion.choices[0].message.content or "Task completed successfully"
-                tool = FinalAnswerTool(
-                    reasoning="Agent decided to complete the task",
-                    completed_steps=[final_content],
-                    answer=final_content,
-                    status=AgentStatesEnum.COMPLETED,
-                )
+            message = completion.choices[0].message
+            tool_calls = getattr(message, "tool_calls", None) or []
+
+            if not tool_calls:
+                tool_calls_missing = True
+                self.logger.error("Tool generation error: tool_calls missing in completion message")
+                tool = self._final_from_error("tool_calls missing")
+            else:
+                tool = tool_calls[0].function.parsed_arguments
         except Exception as e:
             # Handle validation errors or other streaming issues
             error_msg = str(e)
             self.logger.error(f"Tool generation/validation error: {error_msg}")
-            tool = FinalAnswerTool(
-                reasoning=f"Tool generation failed: {error_msg}",
-                completed_steps=["Encountered tool generation error"],
-                answer=f"Error during tool generation: {error_msg}. Please retry the task.",
-                status=AgentStatesEnum.ERROR,
-            )
+            tool_calls_missing = True
+            tool = self._final_from_error(error_msg)
         
         if not isinstance(tool, BaseTool):
             raise ValueError("Selected tool is not a valid BaseTool instance")
-        
-        self.conversation.append(
-            {
-                "role": "assistant",
-                "content": reasoning.remaining_steps[0] if reasoning.remaining_steps else "Completing",
-                "tool_calls": [
-                    {
-                        "type": "function",
-                        "id": f"{self._context.iteration}-action",
-                        "function": {
-                            "name": tool.tool_name,
-                            "arguments": tool.model_dump_json(),
-                        },
-                    }
-                ],
-            }
-        )
-        self.streaming_generator.add_tool_call(
-            f"{self._context.iteration}-action", tool.tool_name, tool.model_dump_json()
-        )
+
+        conversation_entry = {
+            "role": "assistant",
+            "content": reasoning.remaining_steps[0] if reasoning.remaining_steps else "Completing",
+        }
+
+        if not tool_calls_missing:
+            conversation_entry["tool_calls"] = [
+                {
+                    "type": "function",
+                    "id": f"{self._context.iteration}-action",
+                    "function": {
+                        "name": tool.tool_name,
+                        "arguments": tool.model_dump_json(),
+                    },
+                }
+            ]
+            self.streaming_generator.add_tool_call(
+                f"{self._context.iteration}-action", tool.tool_name, tool.model_dump_json()
+            )
+
+        self.conversation.append(conversation_entry)
         return tool
 
     async def continue_conversation(self, user_message: str):
@@ -285,4 +291,3 @@ class SGRVampiCodeAgent(SGRResearchAgent):
         })
         self._context.state = AgentStatesEnum.RESEARCHING
         self.logger.info(f"📝 Continuing conversation with: {user_message[:100]}...")
-

@@ -4,6 +4,7 @@ import os
 import traceback
 import uuid
 from datetime import datetime
+from pathlib import Path
 from typing import Type
 
 import httpx
@@ -19,7 +20,7 @@ from sgr_deep_research.core.tools import (
     ReasoningTool,
     system_agent_tools,
 )
-from sgr_deep_research.settings import get_config
+from sgr_deep_research.settings import OpenAIConfig, get_config
 
 config = get_config()
 
@@ -50,7 +51,13 @@ class BaseAgent:
         self.max_iterations = max_iterations
         self.max_clarifications = max_clarifications
 
-        client_kwargs = {"base_url": config.openai.base_url, "api_key": config.openai.api_key}
+        default_base_url = OpenAIConfig.model_fields["base_url"].default
+        base_url = config.openai.base_url.strip() or default_base_url
+        if not base_url.startswith(("http://", "https://")):
+            self.logger.warning("Invalid OpenAI base_url '%s', falling back to default", base_url)
+            base_url = default_base_url
+
+        client_kwargs = {"base_url": base_url, "api_key": config.openai.api_key}
         if config.openai.proxy.strip():
             client_kwargs["http_client"] = httpx.AsyncClient(proxy=config.openai.proxy)
 
@@ -188,7 +195,12 @@ class BaseAgent:
         except Exception as e:
             self.logger.error(f"❌ Agent execution error: {str(e)}")
             self._context.state = AgentStatesEnum.FAILED
-            traceback.print_exc()
+            error_log_path = Path(config.execution.logs_dir) / "agent_errors.log"
+            error_log_path.parent.mkdir(parents=True, exist_ok=True)
+            with error_log_path.open("a", encoding="utf-8") as f:
+                f.write(f"{datetime.now().isoformat()} [{self.id}] {type(e).__name__}: {e}\n")
+                f.write(traceback.format_exc())
+                f.write("\n")
         finally:
             if self.streaming_generator is not None:
                 self.streaming_generator.finish()
