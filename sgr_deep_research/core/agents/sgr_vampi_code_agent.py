@@ -175,6 +175,11 @@ class SGRVampiCodeAgent(SGRResearchAgent):
 
     async def _reasoning_phase(self) -> ReasoningTool:
         """Reasoning phase with streaming support."""
+        tool_schema_hint = (
+            f"Reasoning tool_call missing. Возможно модель '{config.openai.model}' не соблюдает schema/function "
+            "calling или вернула пустой ответ. Попробуйте модель с лучшим structured output (например "
+            "qwen2.5-coder:3b/7b) или переформулируйте запрос."
+        )
         request_kwargs = {
             "model": config.openai.model,
             "messages": await self._prepare_context(),
@@ -189,9 +194,14 @@ class SGRVampiCodeAgent(SGRResearchAgent):
             async for event in stream:
                 if event.type == "chunk":
                     self.streaming_generator.add_chunk(event.chunk)
-            reasoning: ReasoningTool = (
-                (await stream.get_final_completion()).choices[0].message.tool_calls[0].function.parsed_arguments
-            )
+
+            final_completion = await stream.get_final_completion()
+            message = final_completion.choices[0].message
+            tool_calls = getattr(message, "tool_calls", None) or []
+            if not tool_calls or not tool_calls[0].function:
+                raise ValueError(tool_schema_hint)
+
+            reasoning: ReasoningTool = tool_calls[0].function.parsed_arguments
         
         self.conversation.append(
             {
@@ -219,6 +229,11 @@ class SGRVampiCodeAgent(SGRResearchAgent):
     async def _select_action_phase(self, reasoning: ReasoningTool) -> BaseTool:
         """Select and execute action tool."""
         tool_calls_missing = False
+        tool_schema_hint = (
+            f" Возможно, модель '{config.openai.model}' не соблюдает schema/function calling. "
+            "Попробуйте модель с лучшей поддержкой structured output (например qwen2.5-coder:3b/7b) "
+            "или переформулируйте задачу без веб-поиска/скрейпинга."
+        )
         try:
             request_kwargs = {
                 "model": config.openai.model,
@@ -243,12 +258,12 @@ class SGRVampiCodeAgent(SGRResearchAgent):
             if not tool_calls:
                 tool_calls_missing = True
                 self.logger.error("Tool generation error: tool_calls missing in completion message")
-                tool = self._final_from_error("tool_calls missing")
+                tool = self._final_from_error(f"tool_calls missing.{tool_schema_hint}")
             else:
                 tool = tool_calls[0].function.parsed_arguments
         except Exception as e:
             # Handle validation errors or other streaming issues
-            error_msg = str(e)
+            error_msg = f"{e}.{tool_schema_hint}"
             self.logger.error(f"Tool generation/validation error: {error_msg}")
             tool_calls_missing = True
             tool = self._final_from_error(error_msg)
