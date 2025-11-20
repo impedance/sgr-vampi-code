@@ -8,6 +8,18 @@ Platform for Schema-Guided Reasoning coding assistants: local-first CLI with str
 ## Project Structure & Modules
 Core logic: `sgr_deep_research/` (agents `core/agents`, prompts `prompts/`, API schemas `api/`, utilities/tools `core/tools/`, `services/`). CLIs: `cli_stream.py` (streamed chat/task) and `cli.py`. Benchmarks: `benchmark/`; docs/examples: `docs/`; configs: `config.yaml.example`, `logging_config.yaml`; Docker assets: `services/`.
 
+## Architecture Overview
+- Agents: `BaseAgent` orchestrates reasoning → tool selection → action with streaming/logging. `SGRResearchAgent` adds dynamic NextStepToolsBuilder unions, web search toolkit, and iteration/search caps. `SGRVampiCodeAgent` removes web search, uses code-specific prompt, truncates conversation history, and forces ReasoningTool first.
+- Data model: `ResearchContext` tracks state, iterations, counters, working directory, searches (`SearchResult`), and sources (`SourceData`); `AgentStatesEnum` governs lifecycle. Settings loaded via `AppConfig` (`settings.py`, EnvYAML) covering OpenAI, Tavily, search/scraping, prompts, execution, logging, MCP.
+- Tooling: Coding tools (read/write/edit, grep/find/list, run commands) plus optional web search/extract; research tools (Tavily search/extract, `CreateReportTool`). `MCP2ToolConverter` builds Pydantic tools from MCP schemas (lifespan startup).
+- Streaming & interfaces: `OpenAIStreamingGenerator` emits SSE-like chunks consumed by FastAPI and CLI. FastAPI app (`__main__.py`) exposes health, agents list/state, OpenAI-compatible `/v1/chat/completions`; CLI `cli.py` talks to HTTP, `cli_stream.py` runs locally.
+- Limitations: API agent storage is in-memory (no persistence/HA); `SGRVampiCodeAgent` temporarily toggles global prompt file; `AgentStatesEnum.FINISH_STATES` is a set member—watch for enum/value handling.
+- Logs/reports: agent JSON logs go to `logs_dir` (see `config.execution.logs_dir`), file names include timestamp/agent id; reports from `CreateReportTool` go to `reports_dir` with markdown content plus sources.
+- Env/servers: settings load via `APP_CONFIG` (path to YAML, default `config.yaml` in CWD). FastAPI server entrypoint `python -m sgr_deep_research` (or `python -m sgr_deep_research --host ... --port ...`), env HOST/PORT override defaults. Requires OpenAI/Tavily keys in config/env; MCP starts if `mcp.transport_config` is set.
+- Streaming contract: SSE-like lines `data: <json>\n\n` with `[DONE]` terminator; tool calls streamed as chunks with function name/arguments; clients parse tool_calls to render reasoning/final panels.
+- Sessions: `/v1/chat/completions` accepts `model` as agent id to continue existing agent (only while process lives; in-memory `agents_storage`).
+- Prompts: prompt files in `sgr_deep_research/prompts` (`system_prompt.txt`, `code_system_prompt.txt`, `coding_agent_prompt.txt`, `initial_user_request.txt`, `clarification_response.txt`). Coding agent temporarily swaps system prompt file at runtime.
+
 ## Key Capabilities
 - Streaming JSON with Markdown rendering and multi-turn history.
 - Workspace targeting: `--workspace/-w` scopes all file ops.
