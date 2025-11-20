@@ -1,6 +1,7 @@
 # Repository Guidelines
 
 - Всегда отвечать пользователю на русском языке.
+- Перед началом работы просматривайте содержимое `memory-bank/` (архитектура, заметки).
 
 ## Project Purpose & Stack
 Platform for Schema-Guided Reasoning coding assistants: local-first CLI with streaming JSON. Stack: Python 3.12, Typer/Rich, FastAPI/uvicorn, Pydantic, httpx/OpenAI client. Tooling: Ruff + pre-commit, docformatter, mdformat. Config in `config.yaml` and logging in `logging_config.yaml`.
@@ -25,6 +26,65 @@ Core logic: `sgr_deep_research/` (agents `core/agents`, prompts `prompts/`, API 
 - Workspace targeting: `--workspace/-w` scopes all file ops.
 - Modes: chat (interactive), task (single instruction), fast (no typing effect; `--speed` tunes typing).
 - Tools: file read/write/edit, grep/find/list, run shell commands, structured reasoning and final answers.
+
+## Инженерные подходы и практики
+- Ограничиваемся KISS/YAGNI: делаем минимально нужное, без лишней сложности и абстракций.
+- DRY с явными общими утилитами (валидация Pydantic, стриминг, тулкиты); избегаем скрытых магий.
+- SOLID в разумных дозах: SRP (агенты/тулы/стриминг разнесены), OCP (новые тулы через `NextStepToolsBuilder`/MCP без ломки базовых классов).
+- Малые итерации (Кент Бек): мелкие изменения + быстрые прогонки `uv run pytest -q` и короткие smoke-CLI/HTTP проверки.
+- Тесты по контракту (Фаулер): фиксируем SSE-формат и `tool_calls` snapshot/контрактными тестами; покрываем обязательный первый вызов Reasoning и fallback Final при сбое tool_calls.
+- Наблюдаемость: структурированные логи с context id/состоянием/выбранным тулом; чёткие таймауты; контролируем усечение истории.
+- Конфиги как 12-фактор: явные defaults в `config.yaml.example`, флаги для web search/MCP, чтобы отключать в тестах.
+- Изоляция I/O (Макконнелл): тонкие слои CLI/HTTP над общей логикой, чистая бизнес-логика без побочек.
+- Рефакторинг по Фаулеру: частые мелкие выделения сервисов/утилит, документируем решения (короткие ADR).
+- CQRS применяем только при реальной необходимости разнести нагрузки чтения/записи или команды/запросы; по умолчанию считаем избыточным для текущего объёма.
+
+### Примеры к подходам
+- Краткая проверка без лишних веток (KISS/guard clauses):
+  ```python
+  if not request.tools:
+      return self._final_from_error("tool_calls missing")
+  tool = request.tools[0]
+  ```
+- DRY/утилита для путей, чтобы не дублировать проверки cwd:
+  ```python
+  def resolve_path(base: Path, target: str) -> Path:
+      path = (base / target).resolve()
+      if base not in path.parents | {path}:
+          raise ValueError("outside workspace")
+      return path
+  ```
+- SOLID/OCP: новый тул через билдер без изменения базовых агентов:
+  ```python
+  class EchoTool(BaseTool):
+      name = "echo"
+      args_schema = EchoArgs
+      def _run(self, text: str) -> str: return text
+
+  tools = NextStepToolsBuilder(base=[ReasoningTool(), FinalAnswerTool()]).with_tool(EchoTool()).build()
+  ```
+- Тест контрактов стриминга (snapshot важнее внутренностей):
+  ```python
+  def test_stream_format(sse_chunks_snapshot):
+      chunks = list(stream_generator("hi"))
+      assert chunks == sse_chunks_snapshot
+  ```
+- Наблюдаемость: структурированное логирование с контекстом:
+  ```python
+  logger.info("tool_selected", extra={"agent_id": ctx.id, "tool": tool.name, "iter": ctx.iteration})
+  ```
+- Изоляция I/O: тонкий HTTP слой вызывает общий сервис:
+  ```python
+  @router.post("/v1/chat/completions")
+  async def chat(req: ChatRequest):
+      result = await agent_service.handle(req)
+      return as_openai_response(result)
+  ```
+- Малые итерации/быстрые проверки (скрипт smokе):
+  ```bash
+  uv run pytest -q
+  uv run cli_stream.py fast "ping" --workspace tests/data
+  ```
 
 ## Quick Start & Commands
 - Install deps: `uv sync`.

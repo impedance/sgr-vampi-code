@@ -9,6 +9,9 @@ whl_file = $(shell ls dist/*.whl)
 install: clean wheel
 	pip3 install $(whl_file) --user
 
+test:
+	uv run pytest -q
+
 format:
 	pre-commit run --all-files
 
